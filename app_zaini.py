@@ -35,7 +35,7 @@ def vai_a_menu(): st.session_state.pagina = "menu"
 # --- MENU PRINCIPALE (PAGINA DI "LOGIN") ---
 if st.session_state.pagina == "menu":
     st.title("🚑 Hub Logistica CRI Treviglio")
-    st.write(f"Benvenuto!. Seleziona l'operazione da effettuare:")
+    st.write(f"Benvenuto! Seleziona l'operazione da effettuare:")
     st.markdown("---")
     
     col1, col2 = st.columns(2)
