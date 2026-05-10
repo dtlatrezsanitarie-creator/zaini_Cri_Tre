@@ -25,7 +25,7 @@ if 'db_dae' not in st.session_state:
 if 'pagina' not in st.session_state:
     st.session_state.pagina = "menu"
 
-mezzi_bg = ["BG 11-24", "BG 11-25", "BG 11-26", "BG 11-27", "BG 11-35", "Postazione Fissa", "Zaino Appiedati"]
+mezzi_bg = ["BG 11-24", "BG 11-25", "BG 11-26", "BG 11-27", "BG 11-35", "Armadio", "Squadra Appiedata"]
 
 # --- FUNZIONI DI NAVIGAZIONE ---
 def vai_a_zaini(): st.session_state.pagina = "zaini"
