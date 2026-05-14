@@ -5,18 +5,18 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="CRI Treviglio - Logistica", page_icon="🚑", layout="wide")
+st.set_page_config(page_title="CRI Treviglio - Logistica Cloud", page_icon="🚑", layout="wide")
 
-# --- CONNESSIONE CLOUD (Google Sheets) ---
-# Questa parte permette all'app di salvare i dati stabilmente
+# --- CONNESSIONE GOOGLE SHEETS ---
+# Questa connessione permette all'app di leggere e scrivere sul foglio
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- FUNZIONE PER SALVARE E LOGGARE ---
 def salva_e_log(df_da_salvare, nome_foglio, operatore, presidio, azione, note=""):
-    # 1. Salva lo stato attuale sul foglio Google per la memoria dell'app
+    # 1. Sovrascrive lo stato attuale sul foglio per "memoria" dell'app
     conn.update(worksheet=nome_foglio, data=df_da_salvare)
     
-    # 2. Invia la riga al Registro Storico (il tuo modulo Google)
+    # 2. Invia al modulo Google per il registro storico
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLScqHbF6BdWGTfjppuzzgjxMKdybQGM3OTdTTsznqiND5Hl4pQ/formResponse"
     payload = {
         "entry.2109955773": operatore, 
@@ -28,13 +28,18 @@ def salva_e_log(df_da_salvare, nome_foglio, operatore, presidio, azione, note=""
         requests.post(form_url, data=payload)
     except:
         pass
+    
+    # Puliamo la cache per forzare la lettura dei nuovi dati al prossimo refresh
     st.cache_data.clear()
 
-# --- INIZIALIZZAZIONE DATABASE (Legge dal Cloud o crea default) ---
+# --- CARICAMENTO DATI DAL CLOUD (Memoria App) ---
+# All'avvio, l'app scarica l'ultimo stato salvato
 if 'db_noleggi' not in st.session_state:
     try:
+        # Tenta di leggere lo stato salvato nel cloud
         st.session_state.db_noleggi = conn.read(worksheet="NOLEGGI")
     except:
+        # Se il foglio è vuoto o nuovo, crea i dati iniziali
         st.session_state.db_noleggi = pd.DataFrame([
             {"ID": f"CARR_{i:02d}", "Stato": "Disponibile", "Dettagli": "-"} for i in range(1, 10)
         ])
@@ -55,6 +60,7 @@ def nav(p):
 
 # --- INTERFACCIA ---
 st.title("🚑 CRI Treviglio - Hub Logistica")
+st.write(f"Stato Cloud aggiornato al: {datetime.now().strftime('%H:%M:%S')}")
 st.markdown("---")
 
 # 1. HOME
@@ -105,7 +111,7 @@ elif st.session_state.pagina == "monitor":
     st.header("🖥️ Monitor Zoll X Advance")
     m = st.session_state.db_monitor.iloc[0]
     
-    st.metric("Stato", m["Stato"], delta=m["Op"])
+    st.metric("Stato attuale", m["Stato"], delta=m["Op"])
     
     if m["Stato"] == "In Carica":
         nome_d = st.text_input("Nome Dipendente Montante")
