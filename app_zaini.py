@@ -140,18 +140,38 @@ elif st.session_state.pagina == "noleggi":
     st.button("⬅️ Torna al Menu", on_click=vai_a_menu)
     st.header("🦽 Gestione Noleggio Presidi Sociali")
     
+    # Statistiche rapide
+    disp = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "Disponibile"])
+    noleggiati = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "Noleggiato"])
+    sanific = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "In Sanificazione"])
+    
+    st.write(f"📊 **Stato Flotta:** {disp} Disponibili | {noleggiati} Fuori | {sanific} Da Sanificare")
+    st.markdown("---")
+    
     cols = st.columns(2)
     for index, row in st.session_state.db_noleggi.iterrows():
         with cols[index % 2]:
             with st.container(border=True):
-                colore = "green" if row['Stato'] == "Disponibile" else "red"
-                st.markdown(f"### :{colore}[{row['ID']} - {row['Tipo']}]")
-                
+                # Colore dinamico in base allo stato
                 if row['Stato'] == "Disponibile":
-                    st.write("**Stato:** Disponibile in Sede")
-                    with st.expander(f"Esegui Noleggio {row['ID']}"):
+                    colore = "green"
+                    titolo_stato = "✅ Disponibile"
+                elif row['Stato'] == "Noleggiato":
+                    colore = "red"
+                    titolo_stato = "🔴 Noleggiato"
+                else:
+                    colore = "orange"
+                    titolo_stato = "🟠 In Sanificazione"
+
+                st.markdown(f"### :{colore}[{row['ID']} - {row['Tipo']}]")
+                st.write(f"**Stato attuale:** {titolo_stato}")
+
+                # LOGICA A 3 FASI:
+                # 1. DISPONIBILE -> NOLEGGIO
+                if row['Stato'] == "Disponibile":
+                    with st.expander(f"Esegui Noleggio"):
                         u_nome = st.text_input("Nome Utente", key=f"u_{row['ID']}")
-                        u_cauzione = st.number_input("Cauzione Versata (€)", min_value=0, key=f"c_{row['ID']}")
+                        u_cauzione = st.number_input("Cauzione (€)", min_value=0, key=f"c_{row['ID']}")
                         if st.button(f"CONFERMA CONSEGNA", key=f"btn_nol_{row['ID']}", type="primary"):
                             if u_nome:
                                 st.session_state.db_noleggi.at[index, 'Stato'] = "Noleggiato"
@@ -160,14 +180,22 @@ elif st.session_state.pagina == "noleggi":
                                 st.session_state.db_noleggi.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
                                 st.rerun()
                             else:
-                                st.error("Inserire il nome dell'utente!")
-                else:
-                    st.write(f"**Stato:** NOLEGGIATO")
-                    st.write(f"**Utente:** {row['Utente']}")
-                    st.write(f"**Cauzione:** {row['Cauzione']} €")
-                    st.caption(f"Consegnato il: {row['Aggiornato']}")
-                    
-                    if st.button(f"REGISTRA RIENTRO {row['ID']}", key=f"btn_rie_{row['ID']}"):
+                                st.error("Inserire nome utente!")
+
+                # 2. NOLEGGIATO -> RIENTRO (Passa a Sanificazione)
+                elif row['Stato'] == "Noleggiato":
+                    st.write(f"👤 **Utente:** {row['Utente']}")
+                    st.write(f"💰 **Cauzione:** {row['Cauzione']} €")
+                    st.caption(f"Inizio noleggio: {row['Aggiornato']}")
+                    if st.button(f"REGISTRA RIENTRO", key=f"btn_rie_{row['ID']}"):
+                        st.session_state.db_noleggi.at[index, 'Stato'] = "In Sanificazione"
+                        st.session_state.db_noleggi.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
+                        st.rerun()
+
+                # 3. IN SANIFICAZIONE -> DISPONIBILE
+                elif row['Stato'] == "In Sanificazione":
+                    st.warning("⚠️ Il presidio deve essere sanificato prima del prossimo uso.")
+                    if st.button(f"CONFERMA AVVENUTA SANIFICAZIONE", key=f"btn_san_{row['ID']}", type="primary"):
                         st.session_state.db_noleggi.at[index, 'Stato'] = "Disponibile"
                         st.session_state.db_noleggi.at[index, 'Utente'] = "-"
                         st.session_state.db_noleggi.at[index, 'Cauzione'] = 0
