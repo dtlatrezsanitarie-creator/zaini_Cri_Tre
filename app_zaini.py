@@ -7,24 +7,16 @@ from streamlit_gsheets import GSheetsConnection
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="CRI Treviglio - Logistica", page_icon="🚑", layout="wide")
 
-# --- CONNESSIONE GOOGLE SHEETS ---
-# Questa connessione rende l'app "autonoma" leggendo i dati dal foglio
+# --- CONNESSIONE CLOUD (Google Sheets) ---
+# Questa parte permette all'app di salvare i dati stabilmente
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- FUNZIONI DI PERSISTENZA ---
-def carica_stato(worksheet_name, default_df):
-    try:
-        # Legge i dati dal foglio Google
-        return conn.read(worksheet=worksheet_name)
-    except:
-        # Se il foglio non esiste o è vuoto, usa i dati iniziali
-        return default_df
-
-def salva_e_log(df, worksheet_name, operatore, presidio, azione, note=""):
-    # 1. Salva lo stato attuale nel database (sovrascrive lo stato per la persistenza)
-    conn.update(worksheet=worksheet_name, data=df)
+# --- FUNZIONE PER SALVARE E LOGGARE ---
+def salva_e_log(df_da_salvare, nome_foglio, operatore, presidio, azione, note=""):
+    # 1. Salva lo stato attuale sul foglio Google per la memoria dell'app
+    conn.update(worksheet=nome_foglio, data=df_da_salvare)
     
-    # 2. Invia il log cronologico al Google Form (per il registro storico)
+    # 2. Invia la riga al Registro Storico (il tuo modulo Google)
     form_url = "https://docs.google.com/forms/d/e/1FAIpQLScqHbF6BdWGTfjppuzzgjxMKdybQGM3OTdTTsznqiND5Hl4pQ/formResponse"
     payload = {
         "entry.2109955773": operatore, 
@@ -36,19 +28,22 @@ def salva_e_log(df, worksheet_name, operatore, presidio, azione, note=""):
         requests.post(form_url, data=payload)
     except:
         pass
-    
-    st.cache_data.clear() # Pulisce la cache per vedere subito le modifiche
+    st.cache_data.clear()
 
-# --- INIZIALIZZAZIONE DATI PERSISTENTI ---
-# Se l'app si riavvia, caricherà l'ultimo stato salvato su Google Sheets
-
+# --- INIZIALIZZAZIONE DATABASE (Legge dal Cloud o crea default) ---
 if 'db_noleggi' not in st.session_state:
-    n_def = pd.DataFrame([{"ID": f"CARR_{i:02d}", "Stato": "Disponibile", "Dettagli": "-"} for i in range(1, 10)])
-    st.session_state.db_noleggi = carica_stato("NOLEGGI", n_def)
+    try:
+        st.session_state.db_noleggi = conn.read(worksheet="NOLEGGI")
+    except:
+        st.session_state.db_noleggi = pd.DataFrame([
+            {"ID": f"CARR_{i:02d}", "Stato": "Disponibile", "Dettagli": "-"} for i in range(1, 10)
+        ])
 
 if 'db_monitor' not in st.session_state:
-    m_def = pd.DataFrame([{"Stato": "In Carica", "Op": "-", "Mezzo": "-"}])
-    st.session_state.db_monitor = carica_stato("MONITOR", m_def)
+    try:
+        st.session_state.db_monitor = conn.read(worksheet="MONITOR")
+    except:
+        st.session_state.db_monitor = pd.DataFrame([{"Stato": "In Carica", "Op": "-", "Mezzo": "-"}])
 
 if 'pagina' not in st.session_state:
     st.session_state.pagina = "home"
@@ -58,10 +53,11 @@ def nav(p):
     st.session_state.pagina = p
     st.rerun()
 
-st.title("🚑 CRI Treviglio - Logistica Persistente")
+# --- INTERFACCIA ---
+st.title("🚑 CRI Treviglio - Hub Logistica")
 st.markdown("---")
 
-# --- HOME ---
+# 1. HOME
 if st.session_state.pagina == "home":
     col1, col2 = st.columns(2)
     with col1:
@@ -71,12 +67,11 @@ if st.session_state.pagina == "home":
         st.error("### 🖥️ DIPENDENTI")
         if st.button("Monitor ZOLL X Advance", use_container_width=True): nav("monitor")
 
-# --- PAGINA NOLEGGI ---
+# 2. PAGINA NOLEGGI
 elif st.session_state.pagina == "noleggi":
     st.button("⬅️ Home", on_click=lambda: nav("home"))
     st.header("🦽 Registro Carrozzine")
     cols = st.columns(3)
-    
     for i, r in st.session_state.db_noleggi.iterrows():
         with cols[i % 3]:
             with st.container(border=True):
@@ -104,20 +99,16 @@ elif st.session_state.pagina == "noleggi":
                         salva_e_log(st.session_state.db_noleggi, "NOLEGGI", "Volontario", r['ID'], "Sanificazione", "OK")
                         st.rerun()
 
-# --- PAGINA MONITOR ---
+# 3. PAGINA MONITOR
 elif st.session_state.pagina == "monitor":
     st.button("⬅️ Home", on_click=lambda: nav("home"))
     st.header("🖥️ Monitor Zoll X Advance")
-    
-    # Prendiamo la prima riga del dataframe monitor
     m = st.session_state.db_monitor.iloc[0]
     
-    col_a, col_b = st.columns(2)
-    col_a.metric("Stato", m["Stato"])
-    col_b.metric("Operatore", m["Op"])
-
+    st.metric("Stato", m["Stato"], delta=m["Op"])
+    
     if m["Stato"] == "In Carica":
-        nome_d = st.text_input("Nome Dipendente")
+        nome_d = st.text_input("Nome Dipendente Montante")
         mezzo_d = st.selectbox("Mezzo", ["BG 11-24", "BG 11-35"])
         if st.button("PRENDI IN CARICO", type="primary"):
             if nome_d:
@@ -132,10 +123,9 @@ elif st.session_state.pagina == "monitor":
         c2 = st.checkbox("In Carica")
         if st.button("FINE TURNO"):
             if c1 and c2:
-                # Salviamo il nome prima di resettare
-                vecchio_op = m['Op']
+                op_attuale = m['Op']
                 st.session_state.db_monitor.at[0, 'Stato'] = "In Carica"
                 st.session_state.db_monitor.at[0, 'Op'] = "-"
                 st.session_state.db_monitor.at[0, 'Mezzo'] = "-"
-                salva_e_log(st.session_state.db_monitor, "MONITOR", vecchio_op, "ZOLL_ADVANCE", "Fine Turno + Sanif", m['Mezzo'])
+                salva_e_log(st.session_state.db_monitor, "MONITOR", op_attuale, "ZOLL_ADVANCE", "Fine Turno + Sanif", m['Mezzo'])
                 st.rerun()
