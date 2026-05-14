@@ -2,202 +2,179 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Configurazione Pagina
-st.set_page_config(page_title="Logistica CRI Treviglio", page_icon="🚑", layout="wide")
+# --- CONFIGURAZIONE PAGINA ---
+st.set_page_config(page_title="CRI Treviglio - Logistica", page_icon="🚑", layout="wide")
 
-# --- INIZIALIZZAZIONE DATI (PERSISTENTI NELLA SESSIONE) ---
+# --- CUSTOM CSS PER RENDERE L'INTERFACCIA PROFESSIONALE ---
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; font-weight: bold; }
+    .stMetric { background-color: #f0f2f6; padding: 10px; border-radius: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# 1. Database Zaini
+# --- INIZIALIZZAZIONE DATABASE (SESSION STATE) ---
 if 'db_zaini' not in st.session_state:
     st.session_state.db_zaini = pd.DataFrame([
-        {"ID": "ZAINO_3ì01", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "ZAINO_3ì02", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "ZAINO_3ì03", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "ZAINO_3ì04", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
+        {"ID": f"3ì0{i}", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"} for i in range(1, 5)
     ])
 
-# 2. Database DAE
 if 'db_dae' not in st.session_state:
     st.session_state.db_dae = pd.DataFrame([
-        {"ID": "DAE_01", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "DAE_02", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "DAE_03", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
-        {"ID": "DAE_04", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"},
+        {"ID": f"DAE_0{i}", "Stato": "In Magazzino", "Mezzo": "-", "Aggiornato": "-"} for i in range(1, 5)
     ])
 
-# 3. Database Noleggi (Carrozzine e Stampelle)
 if 'db_noleggi' not in st.session_state:
-    st.session_state.db_noleggi = pd.DataFrame([
-        {"ID": "CARR_01", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_02", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_03", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_04", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_05", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_06", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "CARR_07", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "STAM_01", "Tipo": "Coppia Stampelle", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-        {"ID": "STAM_02", "Tipo": "Coppia Stampelle", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
-    ])
+    carrozzine = [{"ID": f"CARR_{i:02d}", "Tipo": "Carrozzina", "Stato": "Disponibile", "Dettagli": "-"} for i in range(1, 10)]
+    st.session_state.db_noleggi = pd.DataFrame(carrozzine)
+
+if 'db_monitor' not in st.session_state:
+    st.session_state.db_monitor = {"Stato": "In Carica", "Operatore": "-", "Mezzo": "-", "Check": "-"}
 
 if 'pagina' not in st.session_state:
-    st.session_state.pagina = "menu"
+    st.session_state.pagina = "home"
 
-mezzi_bg = ["BG 11-24", "BG 11-25", "BG 11-26", "BG 11-27", "BG 11-35", "Armadio", "Squadra Appiedata"]
+# --- VARIABILI GLOBALI ---
+mezzi_lista = ["BG 11-24", "BG 11-25", "BG 11-26", "BG 11-27", "BG 11-35", "Appiedati", "Magazzino"]
 
 # --- FUNZIONI DI NAVIGAZIONE ---
-def vai_a_zaini(): st.session_state.pagina = "zaini"
-def vai_a_dae(): st.session_state.pagina = "dae"
-def vai_a_noleggi(): st.session_state.pagina = "noleggi"
-def vai_a_menu(): st.session_state.pagina = "menu"
+def nav(pag): 
+    st.session_state.pagina = pag
+    st.rerun()
 
-# --- MENU PRINCIPALE (PAGINA DI "LOGIN") ---
-if st.session_state.pagina == "menu":
-    st.title("🚑 Hub Logistica CRI Treviglio")
-    st.write(f"Benvenuto! Seleziona l'operazione da effettuare:")
-    st.markdown("---")
-    
-    col1, col2, col3 = st.columns(3)
-    
+# --- HEADER FISSO ---
+st.title("🚑 CRI Treviglio - Hub Logistica")
+st.write(f"Oggi è il {datetime.now().strftime('%d/%m/%Y')}")
+st.markdown("---")
+
+# --- LOGICA NAVIGAZIONE ---
+
+# 1. HOME MENU
+if st.session_state.pagina == "home":
+    col1, col2 = st.columns(2)
     with col1:
-        st.info("### 📦 ZAINI\nGestione zaini 3ì01-3ì04")
-        if st.button("GESTIONE ZAINI", use_container_width=True, type="primary"):
-            vai_a_zaini()
-            st.rerun()
-
+        st.info("### 📦 LOGISTICA MEZZI")
+        if st.button("Gestione Zaini e DAE"): nav("mezzi")
+        
+        st.warning("### 🦽 NOLEGGIO SOCIALE")
+        if st.button("Gestione Carrozzine"): nav("noleggio")
+        
     with col2:
-        st.success("### ⚡ DAE\nGestione defibrillatori 01-04")
-        if st.button("GESTIONE DAE", use_container_width=True, type="primary"):
-            vai_a_dae()
-            st.rerun()
+        st.error("### 🖥️ AREA DIPENDENTI")
+        st.write("Accesso esclusivo per il monitor Zoll X Advance")
+        if st.button("Gestione Monitor Advance"): nav("dipendenti")
 
-    with col3:
-        st.warning("### 🦽 NOLEGGI\nCarrozzine e Stampelle")
-        if st.button("GESTIONE NOLEGGI", use_container_width=True, type="primary"):
-            vai_a_noleggi()
-            st.rerun()
+# 2. PAGINA MEZZI (ZAINI E DAE)
+elif st.session_state.pagina == "mezzi":
+    if st.button("⬅️ Torna alla Home"): nav("home")
+    
+    tab1, tab2 = st.tabs(["🎒 Zaini Serie 3ì", "⚡ Defibrillatori DAE"])
+    
+    with tab1:
+        cols = st.columns(2)
+        for i, r in st.session_state.db_zaini.iterrows():
+            with cols[i % 2]:
+                with st.container(border=True):
+                    c = "green" if r['Stato'] == "In Magazzino" else "red"
+                    st.subheader(f":{c}[Zaino {r['ID']}]")
+                    st.write(f"Posizione: **{r['Mezzo']}**")
+                    if r['Stato'] == "In Magazzino":
+                        m = st.selectbox("Assegna a:", mezzi_lista, key=f"z_sel_{i}")
+                        if st.button(f"CARICA {r['ID']}", key=f"z_btn_{i}"):
+                            st.session_state.db_zaini.at[i, 'Stato'] = "In Servizio"
+                            st.session_state.db_zaini.at[i, 'Mezzo'] = m
+                            st.rerun()
+                    else:
+                        if st.button(f"SCARICA {r['ID']}", key=f"z_btn_{i}"):
+                            st.session_state.db_zaini.at[i, 'Stato'] = "In Magazzino"
+                            st.session_state.db_zaini.at[i, 'Mezzo'] = "-"
+                            st.rerun()
+
+    with tab2:
+        cols = st.columns(2)
+        for i, r in st.session_state.db_dae.iterrows():
+            with cols[i % 2]:
+                with st.container(border=True):
+                    c = "green" if r['Stato'] == "In Magazzino" else "red"
+                    st.subheader(f":{c}[{r['ID']}]")
+                    st.write(f"Posizione: **{r['Mezzo']}**")
+                    if r['Stato'] == "In Magazzino":
+                        m = st.selectbox("Assegna a:", mezzi_lista, key=f"d_sel_{i}")
+                        if st.button(f"CARICA {r['ID']}", key=f"d_btn_{i}"):
+                            st.session_state.db_dae.at[i, 'Stato'] = "In Servizio"
+                            st.session_state.db_dae.at[i, 'Mezzo'] = m
+                            st.rerun()
+                    else:
+                        if st.button(f"SCARICA {r['ID']}", key=f"d_btn_{i}"):
+                            st.session_state.db_dae.at[i, 'Stato'] = "In Magazzino"
+                            st.session_state.db_dae.at[i, 'Mezzo'] = "-"
+                            st.rerun()
+
+# 3. PAGINA NOLEGGIO (CARROZZINE)
+elif st.session_state.pagina == "noleggio":
+    if st.button("⬅️ Torna alla Home"): nav("home")
+    st.header("🦽 Gestione Noleggio Carrozzine")
+    
+    cols = st.columns(3)
+    for i, r in st.session_state.db_noleggi.iterrows():
+        with cols[i % 3]:
+            with st.container(border=True):
+                if r['Stato'] == "Disponibile":
+                    st.success(f"**{r['ID']}**")
+                    nome = st.text_input("Utente", key=f"n_{i}", placeholder="Nome e Cognome")
+                    if st.button("NOLEGGIA", key=f"b_{i}"):
+                        if nome:
+                            st.session_state.db_noleggi.at[i, 'Stato'] = "Fuori"
+                            st.session_state.db_noleggi.at[i, 'Dettagli'] = nome
+                            st.rerun()
+                elif r['Stato'] == "Fuori":
+                    st.error(f"**{r['ID']}**")
+                    st.write(f"Utente: {r['Dettagli']}")
+                    if st.button("REGISTRA RIENTRO", key=f"b_{i}"):
+                        st.session_state.db_noleggi.at[i, 'Stato'] = "Sanificazione"
+                        st.rerun()
+                else:
+                    st.warning(f"**{r['ID']}**")
+                    st.write("DA SANIFICARE")
+                    if st.button("OK PULITA", key=f"b_{i}"):
+                        st.session_state.db_noleggi.at[i, 'Stato'] = "Disponibile"
+                        st.session_state.db_noleggi.at[i, 'Dettagli'] = "-"
+                        st.rerun()
+
+# 4. PAGINA DIPENDENTI (MONITOR ZOLL)
+elif st.session_state.pagina == "dipendenti":
+    if st.button("⬅️ Torna alla Home"): nav("home")
+    st.header("🖥️ Monitor ZOLL X Advance")
+    
+    m = st.session_state.db_monitor
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Stato", m["Stato"])
+    c2.metric("Operatore", m["Operatore"])
+    c3.metric("Mezzo", m["Mezzo"])
     
     st.markdown("---")
-    st.caption("Sistema ottimizzato per smartphone e tablet - Logistica Sanitaria CRI Treviglio")
-
-# --- PAGINA GESTIONE ZAINI ---
-elif st.session_state.pagina == "zaini":
-    st.button("⬅️ Torna al Menu", on_click=vai_a_menu)
-    st.header("📦 Gestione Zaini (Serie 3ì)")
     
-    cols = st.columns(2)
-    for index, row in st.session_state.db_zaini.iterrows():
-        with cols[index % 2]:
-            with st.container(border=True):
-                colore = "green" if row['Stato'] == "In Magazzino" else "red"
-                st.markdown(f"### :{colore}[{row['ID']}]")
-                st.write(f"**Ubicazione:** {row['Mezzo']}")
-                st.caption(f"Ultimo: {row['Aggiornato']}")
-
-                if row['Stato'] == "In Magazzino":
-                    m_scelto = st.selectbox(f"Assegna a:", mezzi_bg, key=f"z_{row['ID']}")
-                    if st.button(f"CARICA {row['ID']}", type="primary"):
-                        st.session_state.db_zaini.at[index, 'Stato'] = "In Servizio"
-                        st.session_state.db_zaini.at[index, 'Mezzo'] = m_scelto
-                        st.session_state.db_zaini.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
-                else:
-                    if st.button(f"SCARICA {row['ID']} IN MAGAZZINO"):
-                        st.session_state.db_zaini.at[index, 'Stato'] = "In Magazzino"
-                        st.session_state.db_zaini.at[index, 'Mezzo'] = "-"
-                        st.session_state.db_zaini.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
-
-# --- PAGINA GESTIONE DAE ---
-elif st.session_state.pagina == "dae":
-    st.button("⬅️ Torna al Menu", on_click=vai_a_menu)
-    st.header("⚡ Gestione Defibrillatori (DAE)")
-    
-    cols = st.columns(2)
-    for index, row in st.session_state.db_dae.iterrows():
-        with cols[index % 2]:
-            with st.container(border=True):
-                colore = "green" if row['Stato'] == "In Magazzino" else "red"
-                st.markdown(f"### :{colore}[{row['ID']}]")
-                st.write(f"**Ubicazione:** {row['Mezzo']}")
-                st.caption(f"Ultimo: {row['Aggiornato']}")
-
-                if row['Stato'] == "In Magazzino":
-                    m_scelto = st.selectbox(f"Assegna a:", mezzi_bg, key=f"d_{row['ID']}")
-                    if st.button(f"CARICA {row['ID']}", type="primary"):
-                        st.session_state.db_dae.at[index, 'Stato'] = "In Servizio"
-                        st.session_state.db_dae.at[index, 'Mezzo'] = m_scelto
-                        st.session_state.db_dae.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
-                else:
-                    if st.button(f"SCARICA {row['ID']} IN MAGAZZINO"):
-                        st.session_state.db_dae.at[index, 'Stato'] = "In Magazzino"
-                        st.session_state.db_dae.at[index, 'Mezzo'] = "-"
-                        st.session_state.db_dae.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
-
-# --- PAGINA GESTIONE NOLEGGI ---
-elif st.session_state.pagina == "noleggi":
-    st.button("⬅️ Torna al Menu", on_click=vai_a_menu)
-    st.header("🦽 Gestione Noleggio Presidi Sociali")
-    
-    # Statistiche rapide
-    disp = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "Disponibile"])
-    noleggiati = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "Noleggiato"])
-    sanific = len(st.session_state.db_noleggi[st.session_state.db_noleggi['Stato'] == "In Sanificazione"])
-    
-    st.write(f"📊 **Stato Flotta:** {disp} Disponibili | {noleggiati} Fuori | {sanific} Da Sanificare")
-    st.markdown("---")
-    
-    cols = st.columns(2)
-    for index, row in st.session_state.db_noleggi.iterrows():
-        with cols[index % 2]:
-            with st.container(border=True):
-                # Colore dinamico in base allo stato
-                if row['Stato'] == "Disponibile":
-                    colore = "green"
-                    titolo_stato = "✅ Disponibile"
-                elif row['Stato'] == "Noleggiato":
-                    colore = "red"
-                    titolo_stato = "🔴 Noleggiato"
-                else:
-                    colore = "orange"
-                    titolo_stato = "🟠 In Sanificazione"
-
-                st.markdown(f"### :{colore}[{row['ID']} - {row['Tipo']}]")
-                st.write(f"**Stato attuale:** {titolo_stato}")
-
-                # LOGICA A 3 FASI:
-                # 1. DISPONIBILE -> NOLEGGIO
-                if row['Stato'] == "Disponibile":
-                    with st.expander(f"Esegui Noleggio"):
-                        u_nome = st.text_input("Nome Utente", key=f"u_{row['ID']}")
-                        u_cauzione = st.number_input("Cauzione (€)", min_value=0, key=f"c_{row['ID']}")
-                        if st.button(f"CONFERMA CONSEGNA", key=f"btn_nol_{row['ID']}", type="primary"):
-                            if u_nome:
-                                st.session_state.db_noleggi.at[index, 'Stato'] = "Noleggiato"
-                                st.session_state.db_noleggi.at[index, 'Utente'] = u_nome
-                                st.session_state.db_noleggi.at[index, 'Cauzione'] = u_cauzione
-                                st.session_state.db_noleggi.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                                st.rerun()
-                            else:
-                                st.error("Inserire nome utente!")
-
-                # 2. NOLEGGIATO -> RIENTRO (Passa a Sanificazione)
-                elif row['Stato'] == "Noleggiato":
-                    st.write(f"👤 **Utente:** {row['Utente']}")
-                    st.write(f"💰 **Cauzione:** {row['Cauzione']} €")
-                    st.caption(f"Inizio noleggio: {row['Aggiornato']}")
-                    if st.button(f"REGISTRA RIENTRO", key=f"btn_rie_{row['ID']}"):
-                        st.session_state.db_noleggi.at[index, 'Stato'] = "In Sanificazione"
-                        st.session_state.db_noleggi.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
-
-                # 3. IN SANIFICAZIONE -> DISPONIBILE
-                elif row['Stato'] == "In Sanificazione":
-                    st.warning("⚠️ Il presidio deve essere sanificato prima del prossimo uso.")
-                    if st.button(f"CONFERMA AVVENUTA SANIFICAZIONE", key=f"btn_san_{row['ID']}", type="primary"):
-                        st.session_state.db_noleggi.at[index, 'Stato'] = "Disponibile"
-                        st.session_state.db_noleggi.at[index, 'Utente'] = "-"
-                        st.session_state.db_noleggi.at[index, 'Cauzione'] = 0
-                        st.session_state.db_noleggi.at[index, 'Aggiornato'] = datetime.now().strftime("%d/%m %H:%M")
-                        st.rerun()
+    if m["Stato"] == "In Carica":
+        st.subheader("📥 Presa in Carico (Inizio Turno)")
+        nome_dip = st.text_input("Nome Dipendente Montante")
+        mezzo_dip = st.selectbox("Mezzo assegnato:", ["BG 11-24", "BG 11-35"])
+        if st.button("INIZIA SERVIZIO", type="primary"):
+            if nome_dip:
+                st.session_state.db_monitor.update({"Stato": "IN SERVIZIO", "Operatore": nome_dip, "Mezzo": mezzo_dip})
+                st.rerun()
+    else:
+        st.subheader("📤 Fine Turno (Rientro)")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            c1 = st.checkbox("Monitor pulito")
+            c2 = st.checkbox("Cavi controllati")
+        with col_c2:
+            c3 = st.checkbox("Messo sotto carica")
+        
+        if st.button("REGISTRA CHIUSURA"):
+            if c1 and c2 and c3:
+                st.session_state.db_monitor.update({"Stato": "In Carica", "Operatore": "-", "Mezzo": "-"})
+                st.success("Ottimo lavoro! Monitor pronto per il prossimo turno.")
+                st.rerun()
+            else:
+                st.error("Completa tutti i check prima di chiudere!")
