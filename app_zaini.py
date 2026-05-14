@@ -30,6 +30,11 @@ if 'db_noleggi' not in st.session_state:
     st.session_state.db_noleggi = pd.DataFrame([
         {"ID": "CARR_01", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
         {"ID": "CARR_02", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
+        {"ID": "CARR_03", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
+        {"ID": "CARR_04", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
+        {"ID": "CARR_05", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
+        {"ID": "CARR_06", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
+        {"ID": "CARR_07", "Tipo": "Carrozzina", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
         {"ID": "STAM_01", "Tipo": "Coppia Stampelle", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
         {"ID": "STAM_02", "Tipo": "Coppia Stampelle", "Stato": "Disponibile", "Utente": "-", "Cauzione": 0, "Aggiornato": "-"},
     ])
